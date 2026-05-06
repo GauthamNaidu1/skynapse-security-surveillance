@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { BrainCircuit, Zap, ShieldCheck, AlertOctagon, Bot } from 'lucide-react';
 import { motion } from 'motion/react';
 
-const LOCATIONS = ["Hitech City", "Charminar", "Banjara Hills", "Secunderabad", "Gachibowli"];
+const LOCATIONS = [
+  "Hitech City", "Charminar", "Banjara Hills", "Secunderabad", "Gachibowli",
+  "Jubilee Hills", "Ameerpet", "LB Nagar", "Madhapur", "Begumpet",
+  "Kukatpally", "Dilsukhnagar", "Mehdipatnam", "Uppal", "Miyapur",
+  "Kondapur", "Tarnaka", "Abids", "Nampally", "Malakpet"
+];
 
 export default function Predictor() {
   const [inputs, setInputs] = useState({

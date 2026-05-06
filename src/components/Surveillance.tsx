@@ -71,7 +71,25 @@ export default function CrimeDetection() {
           body: formData
         });
 
-        if (!response.ok) throw new Error("Analysis failed");
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          if (response.status === 501) {
+            // MoViNet not available on Vercel
+            setResults([{
+              id: Date.now(),
+              detected: false,
+              type: "Unavailable",
+              confidence: 0,
+              timestamp: new Date().toLocaleTimeString(),
+              frameTime: "00:00",
+              details: errorData.suggestion || "MoViNet analysis is not available in cloud deployment. Please switch to Gemini (Image-based) mode."
+            }]);
+            setProgress(100);
+            setAnalyzing(false);
+            return;
+          }
+          throw new Error("Analysis failed");
+        }
 
         const data = await response.json();
         setResults([{

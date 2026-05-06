@@ -55,8 +55,20 @@ export default function LiveMonitor() {
   useEffect(() => {
     // Fetch initial total count from history to match Analytics
     fetch('/api/history')
-      .then(res => res.json())
-      .then(data => setTotalIncidents(data.length))
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setTotalIncidents(data.length);
+          // Pre-populate the incident list from history on first load
+          if (data.length > 0) {
+            setIncidents(data.slice(0, 50));
+            setLoading(false);
+          }
+        }
+      })
       .catch(err => console.error("Failed to fetch initial count", err));
 
     const fetchIncident = async () => {
@@ -64,6 +76,10 @@ export default function LiveMonitor() {
         const res = await fetch('/api/live-incident');
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
+        
+        // Validate that we got a proper incident object
+        if (!data || !data.id || !data.type) return;
+        
         setIncidents(prev => {
             // Avoid duplicates if ID exists
             if (prev.find(i => i.id === data.id)) return prev;
@@ -76,7 +92,7 @@ export default function LiveMonitor() {
         setLoading(false);
       } catch (err) {
         console.error("Failed to fetch incident:", err);
-        // Optional: set loading state or error state if needed
+        setLoading(false); // Don't leave spinner on forever if API fails
       }
     };
 
