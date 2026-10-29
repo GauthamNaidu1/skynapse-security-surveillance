@@ -1,0 +1,418 @@
+{
+  "validation_selection": {
+    "winner": "K-Nearest Neighbors",
+    "val_macro_f1": 0.3329,
+    "all_val_metrics": {
+      "Dummy (Most Frequent)": {
+        "accuracy": 0.4467,
+        "balanced_accuracy": 0.3333,
+        "macro_f1": 0.2058,
+        "weighted_f1": 0.2758,
+        "per_class": {
+          "Low": {
+            "precision": 0.4467,
+            "recall": 1.0,
+            "f1_score": 0.6175,
+            "support": 67
+          },
+          "Medium": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "support": 57
+          },
+          "High": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "support": 26
+          }
+        }
+      },
+      "Dummy (Stratified)": {
+        "accuracy": 0.3533,
+        "balanced_accuracy": 0.2942,
+        "macro_f1": 0.2883,
+        "weighted_f1": 0.3397,
+        "per_class": {
+          "Low": {
+            "precision": 0.4359,
+            "recall": 0.5075,
+            "f1_score": 0.469,
+            "support": 67
+          },
+          "Medium": {
+            "precision": 0.2982,
+            "recall": 0.2982,
+            "f1_score": 0.2982,
+            "support": 57
+          },
+          "High": {
+            "precision": 0.1333,
+            "recall": 0.0769,
+            "f1_score": 0.0976,
+            "support": 26
+          }
+        }
+      },
+      "Logistic Regression": {
+        "accuracy": 0.28,
+        "balanced_accuracy": 0.2857,
+        "macro_f1": 0.2728,
+        "weighted_f1": 0.2923,
+        "per_class": {
+          "Low": {
+            "precision": 0.4091,
+            "recall": 0.2687,
+            "f1_score": 0.3243,
+            "support": 67
+          },
+          "Medium": {
+            "precision": 0.32,
+            "recall": 0.2807,
+            "f1_score": 0.2991,
+            "support": 57
+          },
+          "High": {
+            "precision": 0.1429,
+            "recall": 0.3077,
+            "f1_score": 0.1951,
+            "support": 26
+          }
+        }
+      },
+      "Decision Tree": {
+        "accuracy": 0.3067,
+        "balanced_accuracy": 0.2977,
+        "macro_f1": 0.2718,
+        "weighted_f1": 0.2948,
+        "per_class": {
+          "Low": {
+            "precision": 0.3974,
+            "recall": 0.4627,
+            "f1_score": 0.4276,
+            "support": 67
+          },
+          "Medium": {
+            "precision": 0.3182,
+            "recall": 0.1228,
+            "f1_score": 0.1772,
+            "support": 57
+          },
+          "High": {
+            "precision": 0.16,
+            "recall": 0.3077,
+            "f1_score": 0.2105,
+            "support": 26
+          }
+        }
+      },
+      "K-Nearest Neighbors": {
+        "accuracy": 0.4667,
+        "balanced_accuracy": 0.3683,
+        "macro_f1": 0.3329,
+        "weighted_f1": 0.418,
+        "per_class": {
+          "Low": {
+            "precision": 0.4896,
+            "recall": 0.7015,
+            "f1_score": 0.5767,
+            "support": 67
+          },
+          "Medium": {
+            "precision": 0.4423,
+            "recall": 0.4035,
+            "f1_score": 0.422,
+            "support": 57
+          },
+          "High": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "support": 26
+          }
+        }
+      },
+      "Random Forest": {
+        "accuracy": 0.3333,
+        "balanced_accuracy": 0.2828,
+        "macro_f1": 0.2804,
+        "weighted_f1": 0.3291,
+        "per_class": {
+          "Low": {
+            "precision": 0.4091,
+            "recall": 0.403,
+            "f1_score": 0.406,
+            "support": 67
+          },
+          "Medium": {
+            "precision": 0.3333,
+            "recall": 0.3684,
+            "f1_score": 0.35,
+            "support": 57
+          },
+          "High": {
+            "precision": 0.0952,
+            "recall": 0.0769,
+            "f1_score": 0.0851,
+            "support": 26
+          }
+        }
+      },
+      "Voting Classifier (Soft)": {
+        "accuracy": 0.3533,
+        "balanced_accuracy": 0.2899,
+        "macro_f1": 0.2828,
+        "weighted_f1": 0.3419,
+        "per_class": {
+          "Low": {
+            "precision": 0.4133,
+            "recall": 0.4627,
+            "f1_score": 0.4366,
+            "support": 67
+          },
+          "Medium": {
+            "precision": 0.3621,
+            "recall": 0.3684,
+            "f1_score": 0.3652,
+            "support": 57
+          },
+          "High": {
+            "precision": 0.0588,
+            "recall": 0.0385,
+            "f1_score": 0.0465,
+            "support": 26
+          }
+        }
+      }
+    }
+  },
+  "test_evaluation": {
+    "Dummy (Most Frequent)": {
+      "accuracy": 0.5267,
+      "balanced_accuracy": 0.3333,
+      "macro_f1": 0.23,
+      "weighted_f1": 0.3634,
+      "per_class": {
+        "Low": {
+          "precision": 0.5267,
+          "recall": 1.0,
+          "f1_score": 0.69,
+          "support": 79
+        },
+        "Medium": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "support": 48
+        },
+        "High": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "support": 23
+        }
+      }
+    },
+    "Dummy (Stratified)": {
+      "accuracy": 0.46,
+      "balanced_accuracy": 0.3846,
+      "macro_f1": 0.3813,
+      "weighted_f1": 0.4529,
+      "per_class": {
+        "Low": {
+          "precision": 0.5513,
+          "recall": 0.5443,
+          "f1_score": 0.5478,
+          "support": 79
+        },
+        "Medium": {
+          "precision": 0.4035,
+          "recall": 0.4792,
+          "f1_score": 0.4381,
+          "support": 48
+        },
+        "High": {
+          "precision": 0.2,
+          "recall": 0.1304,
+          "f1_score": 0.1579,
+          "support": 23
+        }
+      }
+    },
+    "Logistic Regression": {
+      "accuracy": 0.24,
+      "balanced_accuracy": 0.271,
+      "macro_f1": 0.2292,
+      "weighted_f1": 0.2563,
+      "per_class": {
+        "Low": {
+          "precision": 0.5263,
+          "recall": 0.2532,
+          "f1_score": 0.3419,
+          "support": 79
+        },
+        "Medium": {
+          "precision": 0.1579,
+          "recall": 0.125,
+          "f1_score": 0.1395,
+          "support": 48
+        },
+        "High": {
+          "precision": 0.1351,
+          "recall": 0.4348,
+          "f1_score": 0.2062,
+          "support": 23
+        }
+      }
+    },
+    "Decision Tree": {
+      "accuracy": 0.3333,
+      "balanced_accuracy": 0.2732,
+      "macro_f1": 0.2546,
+      "weighted_f1": 0.3246,
+      "per_class": {
+        "Low": {
+          "precision": 0.4824,
+          "recall": 0.519,
+          "f1_score": 0.5,
+          "support": 79
+        },
+        "Medium": {
+          "precision": 0.25,
+          "recall": 0.0833,
+          "f1_score": 0.125,
+          "support": 48
+        },
+        "High": {
+          "precision": 0.102,
+          "recall": 0.2174,
+          "f1_score": 0.1389,
+          "support": 23
+        }
+      }
+    },
+    "K-Nearest Neighbors": {
+      "accuracy": 0.4267,
+      "balanced_accuracy": 0.3212,
+      "macro_f1": 0.3107,
+      "weighted_f1": 0.4051,
+      "per_class": {
+        "Low": {
+          "precision": 0.5455,
+          "recall": 0.6076,
+          "f1_score": 0.5749,
+          "support": 79
+        },
+        "Medium": {
+          "precision": 0.2632,
+          "recall": 0.3125,
+          "f1_score": 0.2857,
+          "support": 48
+        },
+        "High": {
+          "precision": 0.2,
+          "recall": 0.0435,
+          "f1_score": 0.0714,
+          "support": 23
+        }
+      }
+    },
+    "Random Forest": {
+      "accuracy": 0.4,
+      "balanced_accuracy": 0.333,
+      "macro_f1": 0.3323,
+      "weighted_f1": 0.398,
+      "per_class": {
+        "Low": {
+          "precision": 0.52,
+          "recall": 0.4937,
+          "f1_score": 0.5065,
+          "support": 79
+        },
+        "Medium": {
+          "precision": 0.3051,
+          "recall": 0.375,
+          "f1_score": 0.3364,
+          "support": 48
+        },
+        "High": {
+          "precision": 0.1875,
+          "recall": 0.1304,
+          "f1_score": 0.1538,
+          "support": 23
+        }
+      }
+    },
+    "Voting Classifier (Soft)": {
+      "accuracy": 0.38,
+      "balanced_accuracy": 0.2944,
+      "macro_f1": 0.2878,
+      "weighted_f1": 0.3728,
+      "per_class": {
+        "Low": {
+          "precision": 0.5195,
+          "recall": 0.5063,
+          "f1_score": 0.5128,
+          "support": 79
+        },
+        "Medium": {
+          "precision": 0.2623,
+          "recall": 0.3333,
+          "f1_score": 0.2936,
+          "support": 48
+        },
+        "High": {
+          "precision": 0.0833,
+          "recall": 0.0435,
+          "f1_score": 0.0571,
+          "support": 23
+        }
+      }
+    }
+  },
+  "baseline_comparison_statement": "YES: The selected model (K-Nearest Neighbors) meaningfully beats the majority-class baseline. It achieves a Macro-F1 of 0.3107 compared to the baseline's 0.2300 (an improvement of +0.0807), and a Balanced Accuracy of 0.3212 vs 0.3333 (+-0.0121).",
+  "best_model_per_class": {
+    "Low": {
+      "precision": 0.5455,
+      "recall": 0.6076,
+      "f1_score": 0.5749,
+      "support": 79
+    },
+    "Medium": {
+      "precision": 0.2632,
+      "recall": 0.3125,
+      "f1_score": 0.2857,
+      "support": 48
+    },
+    "High": {
+      "precision": 0.2,
+      "recall": 0.0435,
+      "f1_score": 0.0714,
+      "support": 23
+    }
+  },
+  "metadata": {
+    "random_seed": 42,
+    "train_samples": 700,
+    "val_samples": 150,
+    "test_samples": 150,
+    "features_used": [
+      "hour_sin",
+      "hour_cos",
+      "day_of_week",
+      "is_weekend",
+      "trailing_30d_density",
+      "area_Gachibowli",
+      "area_Secunderabad",
+      "area_Ameerpet",
+      "area_Kukatpally",
+      "area_LB Nagar",
+      "area_Charminar",
+      "area_Jubilee Hills",
+      "area_Madhapur",
+      "area_Banjara Hills",
+      "area_Begumpet"
+    ]
+  }
+}

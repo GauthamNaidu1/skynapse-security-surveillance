@@ -78,15 +78,43 @@ def build_preprocessor(feature_df):
     )
     return preprocessor
 
-def get_feature_columns(df, target_col):
+def get_feature_columns(df, target_col=None):
     """
-    Select engineered feature columns, excluding raw text metadata and targets.
+    Select features from an explicit allow-list of the 15 engineered numeric features
+    recorded in data/processed/dataset_summary.json.
+
+    Explicit exclusions (dropped unless in the allow-list):
+    - Incident_ID: Arbitrary integer primary key with zero predictive meaning; causes spurious overfitting.
+    - Crime_Type: Direct categorical crime label which directly leaks the severity target definition (label leakage).
+    - Crime_Description: Free-text string narrative; unparsed text raises conversion errors in numerical estimators.
+    - Victim_Age_Group: Categorical string bin (e.g. '26-35'); un-encoded strings trigger ValueError in float conversion.
+    - Victim_Gender: Categorical string ('Male'/'Female'); un-encoded text causes estimator conversion failure.
+    - Latitude / Longitude: Raw continuous spatial coordinates; superseded by leak-free area one-hot indicators.
+    - Area: Raw categorical area string; superseded by one-hot encoded area columns from train set.
+    - timestamp / Date / Time: Raw temporal strings; superseded by cyclical hour_sin/cos and calendar features.
+    - target_severity / Severity / Severity_Level: Prediction targets; severe leakage if included in features.
     """
-    exclude_cols = {
-        target_col, 'timestamp', 'Time', 'Date', 'Severity', 'Severity_Level',
-        'Crime_Type', 'target_severity', 'Unnamed: 0'
-    }
-    features = [c for c in df.columns if c not in exclude_cols]
+    # 1. Attempt to load the exact 15 engineered numeric features from dataset_summary.json
+    summary_path = os.path.join("data", "processed", "dataset_summary.json")
+    if os.path.exists(summary_path):
+        try:
+            with open(summary_path, "r") as f:
+                summary = json.load(f)
+            allowed = summary.get("features", [])
+            valid_features = [c for c in allowed if c in df.columns]
+            if len(valid_features) == 15:
+                return valid_features
+        except Exception:
+            pass
+
+    # 2. Explicit fallback allow-list of the 15 engineered numeric features
+    allow_list = [
+        'hour_sin', 'hour_cos', 'day_of_week', 'is_weekend', 'trailing_30d_density',
+        'area_Gachibowli', 'area_Secunderabad', 'area_Ameerpet', 'area_Kukatpally',
+        'area_LB Nagar', 'area_Charminar', 'area_Jubilee Hills', 'area_Madhapur',
+        'area_Banjara Hills', 'area_Begumpet'
+    ]
+    features = [c for c in allow_list if c in df.columns]
     return features
 
 def evaluate_predictions(y_true, y_pred, y_prob=None, split_name="Test"):
