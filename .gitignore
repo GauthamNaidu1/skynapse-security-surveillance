@@ -1,8 +1,52 @@
+# Dependencies
 node_modules/
+
+# Production build artifacts
 build/
 dist/
+
+# Logs and coverage
 coverage/
-.DS_Store
 *.log
+npm-debug.log*
+yarn-debug.log*
+
+# Environment files and secrets
 .env*
 !.env.example
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# SQLite databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+skynapse.db
+
+# Large dataset files and model binaries
+data/*.csv
+data/processed/
+models/*.joblib
+models/*.pkl
+models/*.h5
+
+# Temporary uploads
+uploads/*
+!uploads/.gitkeep
+
+# OS and Editor metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

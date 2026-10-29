@@ -5,16 +5,12 @@ import { fileURLToPath } from 'url';
 import { GoogleGenAI } from "@google/genai";
 import multer from 'multer';
 import fs from 'fs';
-// import db, { initDB } from './src/db/database.ts';
+import db, { initDB } from './src/db/database.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ============================================================
-// In-Memory Database — Seeded synchronously at module scope
-// so data is ALWAYS available, even on Vercel cold starts.
-// ============================================================
-const incidents: any[] = [];
-const predictions: any[] = [];
+// Initialize SQLite database schema and seed historical data
+initDB();
 
 const LOCATIONS = [
   { name: "Hitech City", lat: 17.4435, lng: 78.3772 },
@@ -42,31 +38,6 @@ const LOCATIONS = [
 const CRIME_TYPES = ["Theft", "Arson", "Fighting", "Suspicious Activity", "Traffic Violation"];
 const SEVERITIES = ["Low", "Medium", "High", "Critical"];
 
-/**
- * Generate a single random incident and push to the in-memory array.
- * Uses seeded randomness based on index for deterministic cold-start data.
- */
-function generateIncident(seed?: number) {
-  const loc = LOCATIONS[seed !== undefined ? seed % LOCATIONS.length : Math.floor(Math.random() * LOCATIONS.length)];
-  const incident = {
-    id: incidents.length + 1,
-    type: CRIME_TYPES[seed !== undefined ? (seed * 7) % CRIME_TYPES.length : Math.floor(Math.random() * CRIME_TYPES.length)],
-    location: loc.name,
-    lat: loc.lat + (Math.random() * 0.008 - 0.004),
-    lng: loc.lng + (Math.random() * 0.008 - 0.004),
-    severity: SEVERITIES[seed !== undefined ? (seed * 3) % SEVERITIES.length : Math.floor(Math.random() * SEVERITIES.length)],
-    timestamp: new Date(Date.now() - (seed !== undefined ? seed * 60000 : Math.floor(Math.random() * 1000000000))).toISOString(),
-    status: 'Active'
-  };
-  incidents.push(incident);
-  return incident;
-}
-
-// Seed 50 incidents synchronously — always available on cold start
-for (let i = 0; i < 50; i++) {
-  generateIncident(i);
-}
-console.log("Database seeded with", incidents.length, "records.");
 
 // --- Simulated ML Service (TypeScript Implementation) ---
 // Since the environment does not support Python runtime for the requested ml_models.py,
@@ -144,17 +115,14 @@ class SentinelAI {
     };
   }
 
-  async trainVisionModel() {
-    this.visionStatus = 'downloading_dataset';
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    this.visionStatus = 'training';
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    this.visionStatus = 'ready';
-    return { status: "Vision Model Trained", classes: ["Theft", "Arson", "Fighting", "Normal"] };
-  }
-
-  getVisionStatus() {
-    return { status: this.visionStatus };
+  getPretrainedVisionInfo() {
+    return {
+      status: "ready",
+      architecture: "Google MoViNet-A0 (Kinetics-600) & Gemini 3.1 Pro (Zero-Shot API)",
+      training_performed: false,
+      evaluation_performed: false,
+      note: "Pretrained models only. Custom CCTV crime video training was NOT conducted."
+    };
   }
 }
 
@@ -196,61 +164,186 @@ const upload = multer({
 
 // Health check
 app.get('/api/health', (req, res) => {
-  console.log("Health check hit");
-  res.json({ status: 'ok', incidents: incidents.length });
+  try {
+    const row = db.prepare('SELECT count(*) as count FROM incidents').get() as { count: number };
+    res.json({ status: 'ok', incidents: row.count, db: 'sqlite' });
+  } catch (e) {
+    res.json({ status: 'ok', incidents: 0, db: 'sqlite_fallback' });
+  }
 });
 
-// 1. Live Incident Feed - Return latest incident (generate a new one each call)
+// 1. Incident Feed / Simulation Endpoint
 app.get('/api/live-incident', (req, res) => {
   try {
-    // Always generate a fresh incident so the feed stays "live"
-    const newIncident = generateIncident();
-    res.json(newIncident);
+    const isSimulation = req.query.mode === 'simulation';
+    if (!isSimulation) {
+      // Historical mode: Return most recent historical incident from database
+      const row = db.prepare('SELECT * FROM incidents WHERE is_simulated = 0 ORDER BY id DESC LIMIT 1').get();
+      if (row) return res.json(row);
+    }
+
+    // Demo simulation mode: Generate simulated incident and persist with is_simulated = 1
+    const loc = LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)];
+    const simRecord = {
+      type: CRIME_TYPES[Math.floor(Math.random() * CRIME_TYPES.length)],
+      location: loc.name,
+      lat: loc.lat + (Math.random() * 0.008 - 0.004),
+      lng: loc.lng + (Math.random() * 0.008 - 0.004),
+      severity: SEVERITIES[Math.floor(Math.random() * SEVERITIES.length)],
+      timestamp: new Date().toISOString(),
+      status: 'Active',
+      is_simulated: 1,
+      source: 'simulation'
+    };
+
+    try {
+      const insert = db.prepare(`
+        INSERT INTO incidents (type, location, lat, lng, severity, timestamp, status, is_simulated, source)
+        VALUES (@type, @location, @lat, @lng, @severity, @timestamp, @status, @is_simulated, @source)
+      `);
+      const info = insert.run(simRecord);
+      res.json({ id: info.lastInsertRowid, ...simRecord });
+    } catch (dbErr) {
+      console.warn("[Database] Live incident persistence failed, returning ephemeral incident:", dbErr);
+      res.json({ id: Date.now(), ...simRecord });
+    }
   } catch (error) {
     console.error("Error in live-incident:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// 2. Historical Data
+// 2. Historical Data — Sourced directly from SQLite
 app.get('/api/history', (req, res) => {
   try {
-    // Return incidents sorted by timestamp DESC
-    const history = [...incidents].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const mode = req.query.mode as string;
+    let stmt;
+    if (mode === 'historical') {
+      stmt = db.prepare('SELECT * FROM incidents WHERE is_simulated = 0 ORDER BY timestamp DESC LIMIT 300');
+    } else if (mode === 'simulated') {
+      stmt = db.prepare('SELECT * FROM incidents WHERE is_simulated = 1 ORDER BY timestamp DESC LIMIT 100');
+    } else {
+      stmt = db.prepare('SELECT * FROM incidents ORDER BY timestamp DESC LIMIT 300');
+    }
+    const history = stmt.all();
     res.json(history);
   } catch (error) {
     console.error("Database error in history:", error);
-    res.json([]); // Return empty array on error
+    res.json([]);
   }
 });
 
-// 3. Predict Endpoint
-app.post('/api/predict', (req, res) => {
-  const { hour, density, location_id } = req.body;
-  const result = sentinel.predictThreat(hour, density, location_id);
+// 3. Predict Endpoint — Calls Python ML microservice with heuristic fallback
+app.post('/api/predict', async (req, res) => {
+  try {
+    const { hour = 12, density = 50, location_id = 0 } = req.body || {};
+    const locObj = LOCATIONS[location_id] || LOCATIONS[0];
+    const area_name = locObj.name;
 
-  // Log prediction
-  predictions.push({
-    id: predictions.length + 1,
-    location_id,
-    hour,
-    density,
-    threat_level: result.threat_level,
-    confidence: result.confidence,
-    timestamp: new Date().toISOString()
-  });
+    let predictionResult: any = null;
 
-  res.json(result);
+    // Resolve ML service URL from environment (e.g. deployed FastAPI on Render/Spaces)
+    // On Vercel, if no external URL is configured, avoid querying localhost to eliminate unnecessary timeouts
+    const configuredUrl = process.env.ML_SERVICE_URL || process.env.PYTHON_ML_SERVICE_URL;
+    const mlBaseUrl = configuredUrl ? configuredUrl.replace(/\/$/, '') : (isVercel ? null : 'http://127.0.0.1:8000');
+
+    if (mlBaseUrl) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+        const mlResponse = await fetch(`${mlBaseUrl}/predict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hour, density, location_id, area_name }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (mlResponse.ok) {
+          predictionResult = await mlResponse.json();
+        }
+      } catch (err) {
+        // Microservice offline or unreachable; fall back cleanly to heuristic
+      }
+    }
+
+    // Fallback to heuristic if ML service is offline, unconfigured, or returned error
+    if (!predictionResult || predictionResult.error) {
+      const fallback = sentinel.predictThreat(hour, density, location_id);
+      predictionResult = {
+        ...fallback,
+        source: "heuristic fallback",
+        is_fallback: true
+      };
+    }
+
+    // Persist prediction in SQLite predictions table (failsafe)
+    try {
+      const insertPred = db.prepare(`
+        INSERT INTO predictions (location_id, hour, density, threat_level, confidence, source)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      insertPred.run(
+        location_id,
+        hour,
+        density,
+        predictionResult.threat_level,
+        predictionResult.confidence,
+        predictionResult.source || "heuristic fallback"
+      );
+    } catch (e) {
+      console.warn("Error persisting prediction to SQLite (non-fatal):", e);
+    }
+
+    res.json(predictionResult);
+  } catch (outerErr) {
+    console.error("Unexpected error in /api/predict, serving emergency fallback:", outerErr);
+    const fallback = sentinel.predictThreat(12, 50, 0);
+    res.json({
+      ...fallback,
+      source: "heuristic fallback",
+      is_fallback: true
+    });
+  }
 });
 
-// 4. Vision Model Endpoints
-app.post('/api/vision/train', async (req, res) => {
-  const result = await sentinel.trainVisionModel();
-  res.json(result);
+// 3a. Model Info Endpoint — Returns model name and reproducible test metrics from results/crime_metrics.json
+app.get('/api/model-info', (req, res) => {
+  const metricsPath = path.join(__dirname, 'results', 'crime_metrics.json');
+  if (fs.existsSync(metricsPath)) {
+    try {
+      const rawData = fs.readFileSync(metricsPath, 'utf8');
+      const parsed = JSON.parse(rawData);
+      const winner = parsed.validation_selection?.winner || "Trained Pipeline";
+      const testMetrics = parsed.test_evaluation?.[winner] || {};
+
+      return res.json({
+        status: "ready",
+        model_name: winner,
+        test_metrics: testMetrics,
+        baseline_comparison: parsed.baseline_comparison_statement,
+        metadata: parsed.metadata,
+        all_models: parsed.test_evaluation
+      });
+    } catch (err) {
+      return res.status(500).json({ status: "error", message: "Failed to read metrics file" });
+    }
+  }
+
+  return res.json({
+    status: "pending",
+    message: "Evaluation metrics not yet generated. Run python/prepare_data.py and python/evaluate_models.py to produce results/crime_metrics.json."
+  });
+});
+
+// 4. Vision Model Info (Pretrained MoViNet / Gemini Zero-Shot; no custom training)
+app.get('/api/vision/info', (req, res) => {
+  res.json(sentinel.getPretrainedVisionInfo());
 });
 
 app.get('/api/vision/status', (req, res) => {
-  res.json(sentinel.getVisionStatus());
+  res.json(sentinel.getPretrainedVisionInfo());
 });
 
 // 4a. MoViNet Video Analysis Endpoint
@@ -446,8 +539,6 @@ async function startLocalServer() {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 
-  // Background incident generator — only locally (intervals don't persist in serverless)
-  setInterval(() => generateIncident(), 3000);
 }
 
 // Only start the local server if NOT on Vercel
