@@ -41,3 +41,8 @@
   mix-blend-mode: normal; 
   outline: 1px solid transparent;
 }
+
+/* High-tech dark mode surveillance theme for OpenStreetMap */
+.leaflet-container .leaflet-tile {
+  filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(120%);
+}
