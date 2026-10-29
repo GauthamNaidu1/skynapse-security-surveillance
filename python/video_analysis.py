@@ -1,3 +1,22 @@
+"""
+=============================================================================
+RESEARCH & CAPABILITY DISCLOSURE
+=============================================================================
+This script utilizes an off-the-shelf, pre-trained Google MoViNet-A0 checkpoint 
+trained on the Kinetics-600 human action video dataset.
+
+CRITICAL DISCLOSURES:
+1. NO MODEL TRAINING: This model was NOT trained or fine-tuned by the author.
+   Custom CCTV crime action training did not occur.
+2. NO BENCHMARK EVALUATION: No empirical accuracy, precision, recall, or loss
+   metrics were measured on crime video benchmarks.
+3. APPROXIMATE DEMO MAPPING: The index mapping to crime categories (e.g., indices
+   150, 400, 500) is a simplified demonstration heuristic, not a trained classifier.
+4. ZERO-SHOT ALTERNATIVE: The application also supports Gemini (gemini-3.1-pro-preview)
+   via API-based zero-shot prompt classification over extracted video frames.
+=============================================================================
+"""
+
 import os
 import cv2
 import numpy as np
@@ -7,28 +26,11 @@ import json
 import argparse
 import sys
 
-# Mapping Kinetics-600 labels to Security Incident Types
-CRIME_MAPPING = {
-    'fighting': 'Fighting',
-    'shoving': 'Fighting',
-    'punching': 'Fighting',
-    'slapping': 'Fighting',
-    'kicking': 'Fighting',
-    'robbing': 'Theft',
-    'stealing': 'Theft',
-    'breaking': 'Vandalism',
-    'vandalizing': 'Vandalism',
-    'climbing': 'Suspicious Activity',
-    'running': 'Suspicious Activity',
-    'tripping': 'Normal', # Could be an accident
-    'walking': 'Normal',
-}
-
 def load_labels():
-    # Kinetics 600 labels are standard. 
-    # For a0-base, we can use the labels from the official repository or a local list if needed.
-    # Here we'll use a simplified approach since we only care about specific crime-related keywords.
-    # Note: In a production environment, you'd load the full kinetics_600_labels.csv
+    """
+    Stub notice: Full Kinetics-600 label resolution is omitted in this demo.
+    Action classifications are approximate demonstration mappings.
+    """
     pass
 
 class VideoAnalyzer:
