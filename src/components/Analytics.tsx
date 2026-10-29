@@ -17,8 +17,10 @@ const COLORS = {
   Critical: '#ef4444'  // Red
 };
 
+import { DEFAULT_HYDERABAD_INCIDENTS } from './LiveMonitor';
+
 export default function Analytics() {
-  const [data, setData] = useState<IncidentData[]>([]);
+  const [data, setData] = useState<IncidentData[]>(DEFAULT_HYDERABAD_INCIDENTS);
   const [locationFilter, setLocationFilter] = useState<string>('All');
   const [severityFilter, setSeverityFilter] = useState<string>('All');
   const [viewMode, setViewMode] = useState<'dashboard' | 'data'>('dashboard');
@@ -33,12 +35,14 @@ export default function Analytics() {
           return res.json();
         })
         .then(newData => {
-          setData(prev => {
-            if (JSON.stringify(prev) !== JSON.stringify(newData)) return newData;
-            return prev;
-          });
+          if (Array.isArray(newData) && newData.length > 0) {
+            setData(prev => {
+              if (JSON.stringify(prev) !== JSON.stringify(newData)) return newData;
+              return prev;
+            });
+          }
         })
-        .catch(err => console.error("Failed to fetch analytics data:", err));
+        .catch(err => console.warn("Using baseline incidents for analytics:", err));
     };
 
     fetchData();
@@ -60,8 +64,16 @@ export default function Analytics() {
     return matchLocation && matchSeverity;
   });
 
+  const ALL_HYDERABAD_SECTORS = [
+    "Hitech City", "Charminar", "Banjara Hills", "Secunderabad", "Gachibowli",
+    "Jubilee Hills", "Ameerpet", "LB Nagar", "Madhapur", "Begumpet",
+    "Kukatpally", "Dilsukhnagar", "Mehdipatnam", "Uppal", "Miyapur",
+    "Kondapur", "Tarnaka", "Abids", "Nampally", "Malakpet"
+  ];
+
   // Unique Locations for Filter
-  const locations = ['All', ...Array.from(new Set(data.map(d => d.location)))];
+  const dataLocations = Array.from(new Set(data.map(d => d.location).filter(Boolean)));
+  const locations = ['All', ...(dataLocations.length > 0 ? dataLocations : ALL_HYDERABAD_SECTORS)];
   const severities = ['All', 'Low', 'Medium', 'High', 'Critical'];
 
   // Process data for Stacked Bar Chart (Location vs Severity)

@@ -69,26 +69,25 @@ class SentinelAI {
     // 2. High density (>75) significantly increases threat levels.
     // 3. Late night (23-4) is the most critical time block.
 
-    let probabilities = [0.6, 0.3, 0.1]; // Low, Medium, High (matching Kaggle severity categories)
+    let probabilities = [0.5, 0.3, 0.15, 0.05]; // Low, Medium, High, Critical
 
     // Time-based adjustment
     if (hour >= 23 || hour <= 4) {
-      probabilities = [0.1, 0.4, 0.5];
+      probabilities = [0.1, 0.3, 0.4, 0.2];
     } else if (hour >= 18 || hour <= 22) {
-      probabilities = [0.3, 0.5, 0.2];
+      probabilities = [0.2, 0.4, 0.3, 0.1];
     }
 
     // Density-based adjustment
     if (density > 80) {
-      probabilities = [probabilities[0] * 0.5, probabilities[1] * 1.2, probabilities[2] * 1.5];
+      probabilities = [probabilities[0] * 0.4, probabilities[1] * 1.1, probabilities[2] * 1.3, probabilities[3] * 1.5];
     } else if (density > 50) {
-      probabilities = [probabilities[0] * 0.8, probabilities[1] * 1.1, probabilities[2] * 1.1];
+      probabilities = [probabilities[0] * 0.7, probabilities[1] * 1.1, probabilities[2] * 1.2, probabilities[3] * 1.2];
     }
 
-    // Location-specific weight (Secunderabad, Charminar, Kukatpally show higher historical risk)
-    // Higher historical risk: Charminar, Secunderabad, Kukatpally, Dilsukhnagar, Abids, Malakpet
+    // Location-specific weight (Secunderabad, Charminar, Kukatpally, etc.)
     if ([1, 3, 10, 11, 17, 19].includes(locationId)) {
-      probabilities = [probabilities[0] * 0.7, probabilities[1] * 1.1, probabilities[2] * 1.3];
+      probabilities = [probabilities[0] * 0.6, probabilities[1] * 1.1, probabilities[2] * 1.2, probabilities[3] * 1.4];
     }
 
     // Normalize probabilities

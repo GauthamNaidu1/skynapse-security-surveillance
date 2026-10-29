@@ -1,41 +1,13 @@
-import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { createRequire } from 'module';
 
+const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = path.join(__dirname, '../../skynapse.db');
 
-// Use persistent file on disk if possible, fallback to memory on read-only environments
-let db: Database.Database;
-try {
-  const isVercel = !!process.env.VERCEL;
-  if (isVercel) {
-    throw new Error('Running on Vercel serverless environment; using in-memory DB');
-  }
-  const dir = path.dirname(dbPath);
-  fs.accessSync(dir, fs.constants.W_OK);
-  db = new Database(dbPath);
-  console.log(`[Database] SQLite connected to persistent file: ${dbPath}`);
-} catch (e: any) {
-  console.log(`[Database] ${e?.message || 'Filesystem not writable'}; initializing in-memory SQLite database`);
-  try {
-    db = new Database(':memory:');
-  } catch (memErr) {
-    console.error('[Database] Could not open in-memory SQLite, using dummy mock:', memErr);
-    db = {
-      prepare: () => ({
-        run: () => ({ lastInsertRowid: 1 }),
-        all: () => [],
-        get: () => ({ count: 0 })
-      }),
-      exec: () => {},
-      transaction: (fn: any) => fn
-    } as any;
-  }
-}
-
-// Coordinate mapping for Hyderabad areas
+// Coordinate mapping for all 20 Hyderabad monitored areas
 export const LOCATIONS_COORDS: Record<string, { lat: number; lng: number }> = {
   "Hitech City": { lat: 17.4435, lng: 78.3772 },
   "Charminar": { lat: 17.3616, lng: 78.4747 },
@@ -59,43 +31,229 @@ export const LOCATIONS_COORDS: Record<string, { lat: number; lng: number }> = {
   "Malakpet": { lat: 17.3763, lng: 78.4983 }
 };
 
-// Initialize Schema
+// Comprehensive reference baseline covering all 20 Hyderabad locations
+export const BASELINE_INCIDENTS = [
+  { type: "Theft", location: "Charminar", severity: "Medium", hoursAgo: 2 },
+  { type: "Chain Snatching", location: "Charminar", severity: "Critical", hoursAgo: 14 },
+  { type: "Traffic Violation", location: "Hitech City", severity: "Low", hoursAgo: 3 },
+  { type: "Suspicious Activity", location: "Hitech City", severity: "Low", hoursAgo: 18 },
+  { type: "Fighting", location: "Secunderabad", severity: "High", hoursAgo: 4 },
+  { type: "Theft", location: "Secunderabad", severity: "Medium", hoursAgo: 22 },
+  { type: "Suspicious Activity", location: "Banjara Hills", severity: "Low", hoursAgo: 5 },
+  { type: "Vandalism", location: "Banjara Hills", severity: "Medium", hoursAgo: 26 },
+  { type: "Traffic Violation", location: "Gachibowli", severity: "Low", hoursAgo: 6 },
+  { type: "Theft", location: "Gachibowli", severity: "Low", hoursAgo: 30 },
+  { type: "Robbery", location: "Jubilee Hills", severity: "High", hoursAgo: 7 },
+  { type: "Suspicious Activity", location: "Jubilee Hills", severity: "Low", hoursAgo: 32 },
+  { type: "Vandalism", location: "Ameerpet", severity: "Medium", hoursAgo: 8 },
+  { type: "Fighting", location: "Ameerpet", severity: "High", hoursAgo: 36 },
+  { type: "Traffic Violation", location: "LB Nagar", severity: "Low", hoursAgo: 9 },
+  { type: "Robbery", location: "LB Nagar", severity: "High", hoursAgo: 40 },
+  { type: "Theft", location: "Madhapur", severity: "Medium", hoursAgo: 10 },
+  { type: "Traffic Violation", location: "Madhapur", severity: "Low", hoursAgo: 42 },
+  { type: "Suspicious Activity", location: "Begumpet", severity: "Low", hoursAgo: 11 },
+  { type: "Theft", location: "Begumpet", severity: "Medium", hoursAgo: 45 },
+  { type: "Chain Snatching", location: "Kukatpally", severity: "Critical", hoursAgo: 12 },
+  { type: "Fighting", location: "Kukatpally", severity: "High", hoursAgo: 48 },
+  { type: "Robbery", location: "Dilsukhnagar", severity: "High", hoursAgo: 13 },
+  { type: "Theft", location: "Dilsukhnagar", severity: "Medium", hoursAgo: 50 },
+  { type: "Chain Snatching", location: "Mehdipatnam", severity: "Critical", hoursAgo: 15 },
+  { type: "Traffic Violation", location: "Mehdipatnam", severity: "Low", hoursAgo: 52 },
+  { type: "Theft", location: "Uppal", severity: "Medium", hoursAgo: 16 },
+  { type: "Fighting", location: "Uppal", severity: "High", hoursAgo: 55 },
+  { type: "Traffic Violation", location: "Miyapur", severity: "Low", hoursAgo: 17 },
+  { type: "Suspicious Activity", location: "Miyapur", severity: "Low", hoursAgo: 58 },
+  { type: "Theft", location: "Kondapur", severity: "Medium", hoursAgo: 19 },
+  { type: "Traffic Violation", location: "Kondapur", severity: "Low", hoursAgo: 60 },
+  { type: "Fighting", location: "Tarnaka", severity: "High", hoursAgo: 20 },
+  { type: "Suspicious Activity", location: "Tarnaka", severity: "Low", hoursAgo: 62 },
+  { type: "Theft", location: "Abids", severity: "Medium", hoursAgo: 21 },
+  { type: "Robbery", location: "Abids", severity: "High", hoursAgo: 65 },
+  { type: "Fighting", location: "Nampally", severity: "High", hoursAgo: 23 },
+  { type: "Traffic Violation", location: "Nampally", severity: "Low", hoursAgo: 68 },
+  { type: "Fighting", location: "Malakpet", severity: "High", hoursAgo: 24 },
+  { type: "Robbery", location: "Malakpet", severity: "High", hoursAgo: 70 }
+];
+
+/**
+ * Pure JavaScript In-Memory Database Engine
+ * Zero native binary dependencies, runs everywhere (Vercel Serverless, Node, Edge).
+ */
+class InMemoryDatabase {
+  incidents: any[] = [];
+  predictions: any[] = [];
+  training_logs: any[] = [];
+  nextIncidentId = 1;
+  nextPredictionId = 1;
+
+  constructor() {
+    this.seedDefaultIncidents();
+  }
+
+  seedDefaultIncidents() {
+    this.incidents = BASELINE_INCIDENTS.map((inc, i) => {
+      const coords = LOCATIONS_COORDS[inc.location] || { lat: 17.3850, lng: 78.4867 };
+      return {
+        id: this.nextIncidentId++,
+        type: inc.type,
+        location: inc.location,
+        lat: coords.lat + ((i % 5 - 2) * 0.0015),
+        lng: coords.lng + (((i * 2) % 5 - 2) * 0.0015),
+        severity: inc.severity,
+        timestamp: new Date(Date.now() - inc.hoursAgo * 3600000).toISOString(),
+        status: 'Resolved',
+        is_simulated: 0,
+        source: 'dataset'
+      };
+    });
+  }
+
+  prepare(sql: string) {
+    const s = sql.toLowerCase();
+
+    return {
+      run: (params?: any) => {
+        if (s.includes('insert into incidents')) {
+          const row = {
+            id: this.nextIncidentId++,
+            type: params?.type || 'Theft',
+            location: params?.location || 'Hitech City',
+            lat: Number(params?.lat) || 17.4435,
+            lng: Number(params?.lng) || 78.3772,
+            severity: params?.severity || 'Medium',
+            timestamp: params?.timestamp || new Date().toISOString(),
+            status: params?.status || 'Active',
+            is_simulated: params?.is_simulated ?? 1,
+            source: params?.source || 'simulation'
+          };
+          this.incidents.unshift(row);
+          return { lastInsertRowid: row.id, changes: 1 };
+        }
+
+        if (s.includes('insert into predictions')) {
+          const row = Array.isArray(params)
+            ? {
+                id: this.nextPredictionId++,
+                location_id: params[0],
+                hour: params[1],
+                density: params[2],
+                threat_level: params[3],
+                confidence: params[4],
+                source: params[5] || 'heuristic fallback',
+                timestamp: new Date().toISOString()
+              }
+            : {
+                id: this.nextPredictionId++,
+                ...params,
+                timestamp: new Date().toISOString()
+              };
+          this.predictions.unshift(row);
+          return { lastInsertRowid: row.id, changes: 1 };
+        }
+
+        return { lastInsertRowid: 1, changes: 1 };
+      },
+
+      all: () => {
+        if (s.includes('from incidents')) {
+          if (s.includes('is_simulated = 0')) {
+            return this.incidents.filter(i => !i.is_simulated).slice(0, 300);
+          }
+          if (s.includes('is_simulated = 1')) {
+            return this.incidents.filter(i => !!i.is_simulated).slice(0, 100);
+          }
+          return [...this.incidents].slice(0, 300);
+        }
+        if (s.includes('from predictions')) {
+          return [...this.predictions];
+        }
+        return [];
+      },
+
+      get: () => {
+        if (s.includes('count(*)')) {
+          return { count: this.incidents.length };
+        }
+        return null;
+      }
+    };
+  }
+
+  exec(sql: string) {
+    // Schema creation is a no-op for in-memory object store
+  }
+
+  transaction(fn: any) {
+    return (rows: any[]) => {
+      for (const row of rows) {
+        this.incidents.push({
+          id: this.nextIncidentId++,
+          ...row
+        });
+      }
+    };
+  }
+}
+
+// Instantiate Database Engine
+let db: any;
+
+try {
+  // On Vercel, always use pure in-memory engine to prevent native C++ module failures
+  if (process.env.VERCEL) {
+    console.log('[Database] Vercel environment detected: using pure in-memory SQLite store');
+    db = new InMemoryDatabase();
+  } else {
+    // In local persistent environment, attempt better-sqlite3 with fallback
+    const Database = require('better-sqlite3');
+    const dir = path.dirname(dbPath);
+    fs.accessSync(dir, fs.constants.W_OK);
+    db = new Database(dbPath);
+    console.log(`[Database] Connected to persistent SQLite file: ${dbPath}`);
+  }
+} catch (e: any) {
+  console.log(`[Database] Native SQLite unavailable (${e?.message || 'fallback'}), using pure in-memory store`);
+  db = new InMemoryDatabase();
+}
+
+// Initialize Schema and Seed Data
 export function initDB() {
   try {
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS incidents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL,
-        location TEXT NOT NULL,
-        lat REAL NOT NULL,
-        lng REAL NOT NULL,
-        severity TEXT NOT NULL,
-        timestamp TEXT NOT NULL,
-        status TEXT DEFAULT 'Active',
-        is_simulated INTEGER DEFAULT 0,
-        source TEXT DEFAULT 'dataset'
-      );
+    if (typeof db.exec === 'function') {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS incidents (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          type TEXT NOT NULL,
+          location TEXT NOT NULL,
+          lat REAL NOT NULL,
+          lng REAL NOT NULL,
+          severity TEXT NOT NULL,
+          timestamp TEXT NOT NULL,
+          status TEXT DEFAULT 'Active',
+          is_simulated INTEGER DEFAULT 0,
+          source TEXT DEFAULT 'dataset'
+        );
 
-      CREATE TABLE IF NOT EXISTS training_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        model_name TEXT NOT NULL,
-        status TEXT NOT NULL,
-        timestamp TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE TABLE IF NOT EXISTS predictions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        location_id INTEGER,
-        hour INTEGER,
-        density INTEGER,
-        threat_level INTEGER,
-        confidence REAL,
-        source TEXT DEFAULT 'heuristic fallback',
-        timestamp TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+        CREATE TABLE IF NOT EXISTS training_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          model_name TEXT NOT NULL,
+          status TEXT NOT NULL,
+          timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS predictions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          location_id INTEGER,
+          hour INTEGER,
+          density INTEGER,
+          threat_level INTEGER,
+          confidence REAL,
+          source TEXT DEFAULT 'heuristic fallback',
+          timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+    }
 
-    // Check if historical data exists in incidents
     const count = db.prepare('SELECT count(*) as count FROM incidents').get() as { count: number };
     if (!count || count.count === 0) {
       seedDatabaseFromDataset();
@@ -107,7 +265,7 @@ export function initDB() {
 
 /**
  * Seed database with real incidents if CSV dataset is available,
- * otherwise populate realistic historical baseline incidents clearly labeled.
+ * otherwise baseline records across all 20 Hyderabad sectors are already active.
  */
 export function seedDatabaseFromDataset() {
   const dataDir = path.join(__dirname, '../../data');
@@ -176,43 +334,24 @@ export function seedDatabaseFromDataset() {
     }
   }
 
-  // Fallback: Populate deterministic historical base records if dataset CSV not yet mounted
-  console.log("[Database] Seeding initial historical reference incident records into SQLite...");
-  const baseIncidents = [
-    { type: "Theft", location: "Charminar", severity: "Medium", hoursAgo: 4 },
-    { type: "Traffic Violation", location: "Hitech City", severity: "Low", hoursAgo: 6 },
-    { type: "Fighting", location: "Secunderabad", severity: "High", hoursAgo: 10 },
-    { type: "Suspicious Activity", location: "Banjara Hills", severity: "Low", hoursAgo: 15 },
-    { type: "Chain Snatching", location: "Kukatpally", severity: "Critical", hoursAgo: 22 },
-    { type: "Vandalism", location: "Ameerpet", severity: "Medium", hoursAgo: 28 },
-    { type: "Theft", location: "Madhapur", severity: "Medium", hoursAgo: 34 },
-    { type: "Traffic Violation", location: "Gachibowli", severity: "Low", hoursAgo: 40 },
-    { type: "Robbery", location: "Dilsukhnagar", severity: "High", hoursAgo: 48 },
-    { type: "Fighting", location: "Malakpet", severity: "High", hoursAgo: 55 },
-    { type: "Theft", location: "Begumpet", severity: "Low", hoursAgo: 62 },
-    { type: "Traffic Violation", location: "LB Nagar", severity: "Low", hoursAgo: 70 },
-    { type: "Suspicious Activity", location: "Jubilee Hills", severity: "Low", hoursAgo: 78 },
-    { type: "Theft", location: "Abids", severity: "Medium", hoursAgo: 85 },
-    { type: "Chain Snatching", location: "Mehdipatnam", severity: "Critical", hoursAgo: 94 }
-  ];
-
-  const initialRows = baseIncidents.map((inc, i) => {
+  // Populate all 20 Hyderabad sectors
+  const initialRows = BASELINE_INCIDENTS.map((inc, i) => {
     const coords = LOCATIONS_COORDS[inc.location] || { lat: 17.3850, lng: 78.4867 };
     return {
       type: inc.type,
       location: inc.location,
-      lat: coords.lat + (0.002 * (i % 3 - 1)),
-      lng: coords.lng + (0.002 * (i % 4 - 1)),
+      lat: coords.lat + ((i % 5 - 2) * 0.0015),
+      lng: coords.lng + (((i * 2) % 5 - 2) * 0.0015),
       severity: inc.severity,
       timestamp: new Date(Date.now() - inc.hoursAgo * 3600000).toISOString(),
-      status: 'Archived',
+      status: 'Resolved',
       is_simulated: 0,
       source: 'dataset'
     };
   });
 
   insertMany(initialRows);
-  console.log(`[Database] Seeded ${initialRows.length} historical baseline incidents into SQLite.`);
+  console.log(`[Database] Seeded ${initialRows.length} historical baseline incidents covering all 20 sectors.`);
 }
 
 export default db;

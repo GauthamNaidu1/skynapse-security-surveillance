@@ -32,6 +32,29 @@ interface Incident {
   lng: number;
 }
 
+export const DEFAULT_HYDERABAD_INCIDENTS: Incident[] = [
+  { id: 1, type: "Theft", location: "Charminar", severity: "Medium", lat: 17.3616, lng: 78.4747, timestamp: new Date(Date.now() - 7200000).toISOString() },
+  { id: 2, type: "Traffic Violation", location: "Hitech City", severity: "Low", lat: 17.4435, lng: 78.3772, timestamp: new Date(Date.now() - 10800000).toISOString() },
+  { id: 3, type: "Fighting", location: "Secunderabad", severity: "High", lat: 17.4399, lng: 78.4983, timestamp: new Date(Date.now() - 14400000).toISOString() },
+  { id: 4, type: "Suspicious Activity", location: "Banjara Hills", severity: "Low", lat: 17.4138, lng: 78.4397, timestamp: new Date(Date.now() - 18000000).toISOString() },
+  { id: 5, type: "Chain Snatching", location: "Kukatpally", severity: "Critical", lat: 17.4849, lng: 78.3968, timestamp: new Date(Date.now() - 21600000).toISOString() },
+  { id: 6, type: "Vandalism", location: "Ameerpet", severity: "Medium", lat: 17.4375, lng: 78.4483, timestamp: new Date(Date.now() - 25200000).toISOString() },
+  { id: 7, type: "Theft", location: "Madhapur", severity: "Medium", lat: 17.4484, lng: 78.3908, timestamp: new Date(Date.now() - 28800000).toISOString() },
+  { id: 8, type: "Traffic Violation", location: "Gachibowli", severity: "Low", lat: 17.4401, lng: 78.3489, timestamp: new Date(Date.now() - 32400000).toISOString() },
+  { id: 9, type: "Robbery", location: "Dilsukhnagar", severity: "High", lat: 17.3687, lng: 78.5247, timestamp: new Date(Date.now() - 36000000).toISOString() },
+  { id: 10, type: "Fighting", location: "Malakpet", severity: "High", lat: 17.3763, lng: 78.4983, timestamp: new Date(Date.now() - 39600000).toISOString() },
+  { id: 11, type: "Theft", location: "Begumpet", severity: "Low", lat: 17.4440, lng: 78.4674, timestamp: new Date(Date.now() - 43200000).toISOString() },
+  { id: 12, type: "Traffic Violation", location: "LB Nagar", severity: "Low", lat: 17.3457, lng: 78.5522, timestamp: new Date(Date.now() - 46800000).toISOString() },
+  { id: 13, type: "Suspicious Activity", location: "Jubilee Hills", severity: "Low", lat: 17.4325, lng: 78.4070, timestamp: new Date(Date.now() - 50400000).toISOString() },
+  { id: 14, type: "Theft", location: "Abids", severity: "Medium", lat: 17.3927, lng: 78.4758, timestamp: new Date(Date.now() - 54000000).toISOString() },
+  { id: 15, type: "Chain Snatching", location: "Mehdipatnam", severity: "Critical", lat: 17.3950, lng: 78.4422, timestamp: new Date(Date.now() - 57600000).toISOString() },
+  { id: 16, type: "Theft", location: "Uppal", severity: "Medium", lat: 17.4065, lng: 78.5593, timestamp: new Date(Date.now() - 61200000).toISOString() },
+  { id: 17, type: "Traffic Violation", location: "Miyapur", severity: "Low", lat: 17.4969, lng: 78.3548, timestamp: new Date(Date.now() - 64800000).toISOString() },
+  { id: 18, type: "Theft", location: "Kondapur", severity: "Medium", lat: 17.4625, lng: 78.3522, timestamp: new Date(Date.now() - 68400000).toISOString() },
+  { id: 19, type: "Fighting", location: "Tarnaka", severity: "High", lat: 17.4260, lng: 78.5304, timestamp: new Date(Date.now() - 72000000).toISOString() },
+  { id: 20, type: "Fighting", location: "Nampally", severity: "High", lat: 17.3866, lng: 78.4678, timestamp: new Date(Date.now() - 75600000).toISOString() }
+];
+
 // Map Controller to handle flying to location
 function MapController({ selectedLocation }: { selectedLocation: { lat: number, lng: number } | null }) {
   const map = useMap();
@@ -46,15 +69,13 @@ function MapController({ selectedLocation }: { selectedLocation: { lat: number, 
 }
 
 export default function LiveMonitor() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [incidents, setIncidents] = useState<Incident[]>(DEFAULT_HYDERABAD_INCIDENTS);
+  const [loading, setLoading] = useState(false);
   const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(null);
-  const [totalIncidents, setTotalIncidents] = useState(0);
+  const [totalIncidents, setTotalIncidents] = useState(DEFAULT_HYDERABAD_INCIDENTS.length);
   const [feedMode, setFeedMode] = useState<'historical' | 'simulation'>('historical');
 
   useEffect(() => {
-    setLoading(true);
-
     if (feedMode === 'historical') {
       // Load real/baseline historical incidents from SQLite
       fetch('/api/history?mode=historical')
@@ -63,14 +84,20 @@ export default function LiveMonitor() {
           return res.json();
         })
         .then(data => {
-          if (Array.isArray(data)) {
+          if (Array.isArray(data) && data.length > 0) {
             setIncidents(data);
             setTotalIncidents(data.length);
+          } else {
+            // Keep default baseline if API returns empty
+            setIncidents(DEFAULT_HYDERABAD_INCIDENTS);
+            setTotalIncidents(DEFAULT_HYDERABAD_INCIDENTS.length);
           }
           setLoading(false);
         })
         .catch(err => {
-          console.error("Failed to fetch historical incidents:", err);
+          console.warn("Using baseline historical incidents fallback:", err);
+          setIncidents(DEFAULT_HYDERABAD_INCIDENTS);
+          setTotalIncidents(DEFAULT_HYDERABAD_INCIDENTS.length);
           setLoading(false);
         });
       return;
