@@ -50,67 +50,56 @@ export default function LiveMonitor() {
   const [loading, setLoading] = useState(true);
   const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(null);
   const [totalIncidents, setTotalIncidents] = useState(0);
-  const [avgResponse, setAvgResponse] = useState("2m 14s");
+  const [feedMode, setFeedMode] = useState<'historical' | 'simulation'>('historical');
 
   useEffect(() => {
-    // Fetch initial total count from history to match Analytics
-    fetch('/api/history')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        if (Array.isArray(data)) {
-          setTotalIncidents(data.length);
-          // Pre-populate the incident list from history on first load
-          if (data.length > 0) {
-            setIncidents(data.slice(0, 50));
-            setLoading(false);
-          }
-        }
-      })
-      .catch(err => console.error("Failed to fetch initial count", err));
+    setLoading(true);
 
-    const fetchIncident = async () => {
+    if (feedMode === 'historical') {
+      // Load real/baseline historical incidents from SQLite
+      fetch('/api/history?mode=historical')
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          if (Array.isArray(data)) {
+            setIncidents(data);
+            setTotalIncidents(data.length);
+          }
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to fetch historical incidents:", err);
+          setLoading(false);
+        });
+      return;
+    }
+
+    // Demo Simulation Mode: periodically generates and records simulated incidents
+    const fetchSimulatedIncident = async () => {
       try {
-        const res = await fetch('/api/live-incident');
+        const res = await fetch('/api/live-incident?mode=simulation');
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
-        
-        // Validate that we got a proper incident object
         if (!data || !data.id || !data.type) return;
-        
+
         setIncidents(prev => {
-            // Avoid duplicates if ID exists
-            if (prev.find(i => i.id === data.id)) return prev;
-            
-            // Increment total count for every new unique incident
-            setTotalIncidents(c => c + 1);
-            
-            return [data, ...prev].slice(0, 50);
+          if (prev.find(i => i.id === data.id)) return prev;
+          setTotalIncidents(c => c + 1);
+          return [data, ...prev].slice(0, 50);
         });
         setLoading(false);
       } catch (err) {
-        console.error("Failed to fetch incident:", err);
-        setLoading(false); // Don't leave spinner on forever if API fails
+        console.error("Simulation feed error:", err);
+        setLoading(false);
       }
     };
 
-    fetchIncident(); // Initial fetch
-    const interval = setInterval(fetchIncident, 3000); // Fetch every 3s
-
-    // Simulate fluctuating response time
-    const responseInterval = setInterval(() => {
-      const mins = 2 + Math.floor(Math.random() * 2); // 2-3 mins
-      const secs = Math.floor(Math.random() * 60);
-      setAvgResponse(`${mins}m ${secs.toString().padStart(2, '0')}s`);
-    }, 5000);
-
-    return () => {
-      clearInterval(interval);
-      clearInterval(responseInterval);
-    };
-  }, []);
+    fetchSimulatedIncident();
+    const interval = setInterval(fetchSimulatedIncident, 4000);
+    return () => clearInterval(interval);
+  }, [feedMode]);
 
   const selectedIncident = incidents.find(i => i.id === selectedIncidentId);
 
@@ -118,24 +107,55 @@ export default function LiveMonitor() {
     <div className="p-6 space-y-6 h-full overflow-y-auto bg-slate-950 text-slate-200">
       <header className="flex justify-between items-center border-b border-slate-800 pb-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Radio className="text-red-500 animate-pulse" />
-            Live Incident Feed
-          </h2>
-          <p className="text-sm text-slate-500 mt-1">Real-time surveillance data stream</p>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+              <Radio className={`w-5 h-5 ${feedMode === 'simulation' ? 'text-amber-500 animate-pulse' : 'text-blue-500'}`} />
+              Incident Geospatial Monitor
+            </h2>
+            {/* Visible Mode Badge */}
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold border ${
+              feedMode === 'historical'
+                ? 'bg-blue-950/60 border-blue-600/40 text-blue-400'
+                : 'bg-amber-950/60 border-amber-600/40 text-amber-400'
+            }`}>
+              {feedMode === 'historical' ? 'Historical data' : 'Simulated feed'}
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            {feedMode === 'historical'
+              ? 'Displaying verified historical incident records from SQLite database'
+              : 'Interactive synthetic demonstration stream for UI evaluation'}
+          </p>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Avg Response</span>
-            <span className="text-2xl font-bold text-white leading-none font-mono">{avgResponse}</span>
+
+        <div className="flex items-center gap-4">
+          {/* Mode Switcher */}
+          <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+            <button
+              onClick={() => setFeedMode('historical')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                feedMode === 'historical'
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Historical Data
+            </button>
+            <button
+              onClick={() => setFeedMode('simulation')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                feedMode === 'simulation'
+                  ? 'bg-amber-600 text-white shadow'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Demo Simulation
+            </button>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Active</span>
+
+          <div className="flex flex-col items-end pl-2">
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Records</span>
             <span className="text-2xl font-bold text-white leading-none font-mono">{totalIncidents}</span>
-          </div>
-          <div className="flex items-center gap-2 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-            <span className="text-xs font-mono text-red-400">LIVE CONNECTION</span>
           </div>
         </div>
       </header>

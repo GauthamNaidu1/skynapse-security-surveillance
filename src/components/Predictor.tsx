@@ -106,7 +106,7 @@ export default function Predictor() {
           </div>
           
           <div className="p-4 bg-purple-900/10 rounded-lg border border-purple-500/20 text-xs text-purple-300">
-            Adjust sliders to see real-time threat prediction updates.
+            Adjust sliders to see interactive threat prediction updates.
           </div>
         </div>
 
@@ -122,7 +122,18 @@ export default function Predictor() {
                 <BrainCircuit className="w-32 h-32" />
               </div>
               
-              <h3 className="text-lg font-semibold text-slate-300 mb-6">Model Output</h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-slate-300">Model Output</h3>
+                {prediction.source && (
+                  <span className={`text-[11px] font-mono px-2.5 py-1 rounded-full border ${
+                    prediction.is_fallback
+                      ? 'bg-amber-950/40 border-amber-600/40 text-amber-400'
+                      : 'bg-emerald-950/40 border-emerald-600/40 text-emerald-400'
+                  }`}>
+                    {prediction.source}
+                  </span>
+                )}
+              </div>
               
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
